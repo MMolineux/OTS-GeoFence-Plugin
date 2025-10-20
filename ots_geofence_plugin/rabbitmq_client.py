@@ -14,7 +14,12 @@ class RabbitMQClient:
         self._app = app
 
         try:
-            self.rabbit_connection = pika.SelectConnection(pika.ConnectionParameters(self._app.config.get("OTS_RABBITMQ_SERVER_ADDRESS")), self.on_connection_open)
+            self.rabbit_connection = pika.SelectConnection(
+                pika.ConnectionParameters(
+                    self._app.config.get("OTS_RABBITMQ_SERVER_ADDRESS")
+                ),
+                self.on_connection_open,
+            )
             self.rabbit_channel: Channel = None
             self.iothread = Thread(target=self.rabbit_connection.ioloop.start)
             self.iothread.daemon = True
