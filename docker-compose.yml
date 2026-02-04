@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: geofence-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: geofence
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  tile38:
+    image: tile38/tile38:latest
+    container_name: geofence-tile38
+    ports:
+      - "9851:9851"
+    volumes:
+      - tile38data:/data
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: geofence-api
+    depends_on:
+      - db
+      - tile38
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/geofence
+      TILE38_URL: redis://tile38:9851
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: geofence-worker
+    command: python -m app.worker.main
+    depends_on:
+      - db
+      - tile38
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/geofence
+      TILE38_URL: redis://tile38:9851
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+
+volumes:
+  pgdata:
+  tile38data:

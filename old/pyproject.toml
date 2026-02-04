@@ -42,4 +42,4 @@ requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0", "se
 build-backend = "poetry_dynamic_versioning.backend"
 
 [project.entry-points.'opentakserver.plugin']
-ots_geofence_plugin = 'ots_geofence_plugin.app:GeoFencePlugin'
+ots_geofence_plugin = 'ots_geofence_plugin.main:GeoFencePlugin'

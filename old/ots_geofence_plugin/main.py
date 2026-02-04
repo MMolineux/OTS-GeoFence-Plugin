@@ -2,6 +2,7 @@ import os
 import pathlib
 import traceback
 
+import gevent
 import yaml
 from flask import (
     Blueprint,
@@ -14,10 +15,15 @@ from flask import (
 )
 from flask_security import roles_accepted
 from opentakserver.plugins.Plugin import Plugin
-from opentakserver.extensions import *
+from opentakserver.extensions import colorlog
+
+from ots_geofence_plugin.deps import setup_dependenices
+from ots_geofence_plugin.infra.worker import CoTListener
 
 from .default_config import DefaultConfig
 import importlib.metadata
+
+logger = colorlog.getLogger("OTS-GeoFence-Plugin")
 
 
 class GeoFencePlugin(Plugin):
@@ -36,8 +42,9 @@ class GeoFencePlugin(Plugin):
         self._load_config()
         self.load_metadata()
 
+        # spawn workers (cannot be blocking)
         try:
-
+            self._worker = CoTListener(app)
             logger.info(f"Successfully Loaded {self._name}")
         except BaseException as e:
             logger.error(f"Failed to load {self._name}: {e}")
