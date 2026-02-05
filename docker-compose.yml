@@ -58,14 +58,13 @@ services:
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/geofence
       TILE38_URL: redis://tile38:9851
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
 
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: geofence-worker
-    command: python -m app.worker.main
+    command: python -m app.workers.ingest.main
     depends_on:
       db:
         condition: service_healthy
@@ -76,7 +75,20 @@ services:
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/geofence
       TILE38_URL: redis://tile38:9851
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      COT_RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+
+  alert-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: geofence-alert-worker
+    command: python -m app.workers.alert.main
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    environment:
+      GEOFENCE_RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      DATABASE_URL: postgresql://user:password@db:5432/geofence
 
 volumes:
   pgdata:

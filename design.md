@@ -1,56 +1,62 @@
 # Design Specification: Standalone GeoFence Service
 
-## 1. Core Features
+## 1. Architecture Overview
 
-### 1.1 Native Auto-Registration
-- **Description**: Automatically detects and registers `__geofence` CoT messages (type `u-d-g`) from TAK clients.
-- **Behavior**: Newly detected fences are created in `Report-Only` mode by default.
-- **Parsing**: Extracts boundary shapes (circular, polygonal) and metadata from the CoT XML.
+### 1.1 GeoFence Engine (Tile38)
+We leverage Tile38's native `SETHOOK` command to handle all geospatial monitoring logic. This offloads CPU-intensive calculations from the Python worker to Tile38.
 
-### 1.2 Highly Configurable Event Handling
-- **Monitoring Modes**: `Active`, `Report-Only`, `Inactive`, and `Archive`.
-- **Trigger Types**: `enter`, `exit`, `cross`, `inside`, and `outside`.
-- **Granular Filtering**: Filter notifications by:
-  - Callsign (regex)
-  - CoT Type (e.g., `a-f-G`)
-  - Speed thresholds
-  - Time-of-day windows
+**Data Flow**:
+1.  **Ingest Worker**: Updates unit positions in Tile38 using `SETPOINT`.
+2.  **API**: Creates geofences in Tile38 using `SETHOOK`.
+3.  **Tile38**: Monitors positions. On breach, pushes JSON to RabbitMQ.
 
-### 1.3 Multi-Channel Notifications
-- **Supported Channels**: Webhooks (HTTP POST), Email (SMTP), SMS, Discord, Slack, and RabbitMQ re-broadcast.
-- **Extensibility**: Interface-based design to allow rapid addition of new channels.
+### 1.2 Alert Worker (Decoupled)
+The Alert Worker is a separate process that listens to the `geofence_alerts` queue. It is entirely decoupled from the Ingest Worker and GeoFence Engine.
 
-### 1.4 High-Throughput Ingestion
-- **Target Performance**: Sustained 3,000 pkts/sec from 500+ emitters.
-- **Implementation**: Asynchronous `aio-pika` consumer with high-performance XML parsing (`lxml`).
-- **Optimization**: Zero-polling monitoring using Tile38 native Geofence Hooks.
+**Data Flow**:
+1.  **Alert Worker**: Parses Tile38 JSON alerts.
+2.  **Lookup**: Queries Postgres for notification rules associated with the Geofence ID.
+3.  **Dispatch**: Sends notifications (Webhooks, Email, SMS) based on configured rules.
 
-### 1.5 Admin Dashboard
-- **Tech Stack**: React + Vite + Shadcn/UI + TanStack (Query, Table, Router).
-- **Map View**: Basic map component (Leaflet/MapLibre) to visualize geofence boundaries.
-- **Management**: UI for CRUD operations on fences, notification rules, and viewing historical logs.
+## 2. RabbitMQ Topology
 
-### 1.6 Modern Authentication
-- **OIDC/JWKS**: Integration with providers like Dex or Keycloak.
-- **API Tokens**: Support for headless/automated tool access.
-- **Basic Auth**: Optional fallback for initial setup or local management.
+*   **Exchange**: `geofence_alerts` (Type: `fanout`).
+*   **Queue**: `geofence_alerts_queue` (Bound to `geofence_alerts`).
+*   **Worker Exchange**: `cot_controller` (Existing, used for Ingest).
 
-## 2. Functional Requirements
+## 3. Tile38 Implementation Details
 
-- **FR1 (Performance)**: The system must sustain 3,000 messages per second under load.
-- **FR2 (Decoupling)**: The system must operate independently of OpenTakServer codebase/utilities.
-- **FR3 (Data Integrity)**: All configurations and breach events must be persisted in PostgreSQL.
-- **FR4 (Real-time)**: Geofence breaches must trigger notifications with sub-second latency (excluding network transport).
+**Command Reference**: `SETHOOK name endpoint [META ...] NEARBY key FENCE`
 
-## 3. User Stories
+*   **Endpoint**: `amqp://guest:guest@rabbitmq:5672/`
+*   **Queue/Exchange**: The hook will be configured to push directly to the `geofence_alerts` exchange.
+*   **Meta**: We pass `geofence_id` and `geofence_name` to help the Alert Worker identify the source.
+*   **Monitoring**: `NEARBY points FENCE` (Monitors all points in the `points` collection against the hook's defined area).
 
-- **US1**: As an admin, I want to see all active geofences on a map to verify coverage.
-- **US2**: As an operator, I want to create a geofence in ATAK and have the server automatically start logging its breaches.
-- **US3**: As a developer, I want to use a single `docker-compose.yml` to spin up the entire development environment.
-- **US4**: As an admin, I want to restrict notifications to only trigger when a specific unit type enters a restricted zone.
+## 4. Components
 
-## 4. Technical Stack Summary
-- **Backend**: FastAPI, SQLModel (SQLAlchemy + Pydantic v2), `aio-pika`, `lxml`.
-- **Database**: PostgreSQL 16+.
-- **Geospatial**: Tile38.
-- **Frontend**: React 18+, Tailwind CSS, Shadcn/UI, TanStack stack.
+### 4.1 Ingest Worker
+*   **Input**: CoT XML from `cot_controller` exchange.
+*   **Action**: `SETPOINT units {uid} {lat} {lon}`.
+
+### 4.2 API (FastAPI)
+*   **POST /geofences**:
+    1.  Validates shape data.
+    2.  Saves to Postgres.
+    3.  Calls `Tile38Service.create_hook()`.
+*   **DELETE /geofences/{id}**:
+    1.  Calls `Tile38Service.delete_hook()`.
+    2.  Deletes from Postgres.
+
+### 4.3 Alert Worker
+*   **Input**: JSON messages from `geofence_alerts_queue`.
+*   **Logic**:
+    1.  Parse `geofence_id` from message.
+    2.  Fetch `NotificationRules` from Postgres.
+    3.  Execute notification dispatch.
+
+## 5. Technical Stack Summary
+*   **Backend**: FastAPI, SQLModel, `aio-pika`, `lxml`, `pyle38`.
+*   **Database**: PostgreSQL 16+.
+*   **Geospatial**: Tile38.
+*   **Frontend**: React 18+, Tailwind CSS, Shadcn/UI, TanStack stack.

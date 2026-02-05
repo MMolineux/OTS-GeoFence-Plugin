@@ -25,6 +25,7 @@ class Geofence(SQLModel, table=True):
     uid: str = Field(index=True, unique=True)
     description: Optional[str] = None
     mode: GeofenceMode = Field(default=GeofenceMode.REPORT_ONLY)
+    detect_on: list[DetectionType] = Field(default=[])
 
     # Shape stored as JSON (GeoJSON or Tile38 format)
     shape_type: str = Field(description="circle, polygon, etc.")
