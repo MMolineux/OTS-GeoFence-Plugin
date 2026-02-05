@@ -10,6 +10,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d geofence"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   tile38:
     image: tile38/tile38:latest
@@ -18,6 +23,23 @@ services:
       - "9851:9851"
     volumes:
       - tile38data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9851/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # During development only...
+  # use shovel between OTS rabbitmq and this stack
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: geofence-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
 
   api:
     build:
@@ -25,8 +47,12 @@ services:
       dockerfile: Dockerfile
     container_name: geofence-api
     depends_on:
-      - db
-      - tile38
+      db:
+        condition: service_healthy
+      tile38:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     ports:
       - "8000:8000"
     environment:
@@ -41,8 +67,12 @@ services:
     container_name: geofence-worker
     command: python -m app.worker.main
     depends_on:
-      - db
-      - tile38
+      db:
+        condition: service_healthy
+      tile38:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/geofence
       TILE38_URL: redis://tile38:9851
