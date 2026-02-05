@@ -1,8 +1,17 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Dashboard } from './pages/Dashboard'
+import { GeofenceEditor } from './pages/GeofenceEditor'
+import { Settings } from './pages/Settings'
+
 function App() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
-      <h1 className="text-4xl font-bold">GeoFence Admin Dashboard</h1>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/geofences" element={<GeofenceEditor />} />
+        <Route path="/settings" element={<Settings />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
