@@ -8,12 +8,13 @@ RUN apt-get update && apt-get install -y \
     libxslt-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install poetry
+# Install UV
+RUN pip install uv
 
-COPY pyproject.toml poetry.lock* ./
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi --no-root
-
+# Copy everything first to avoid build issues
 COPY . .
+
+# Use UV to install dependencies
+RUN uv pip install --system --no-cache .
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
