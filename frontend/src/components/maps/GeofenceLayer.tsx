@@ -1,5 +1,4 @@
 import { Circle } from 'react-leaflet'
-import L from 'leaflet'
 
 interface Geofence {
   id: number
@@ -14,10 +13,9 @@ interface GeofenceLayerProps {
   geofences: Geofence[]
   selectedId?: number
   onSelect: (id: number | null) => void
-  onMove?: (id: number, lat: number, lon: number) => void
 }
 
-export function GeofenceLayer({ geofences, selectedId, onSelect, onMove }: GeofenceLayerProps) {
+export function GeofenceLayer({ geofences, selectedId, onSelect }: GeofenceLayerProps) {
   const parseShapeData = (shapeData: string): { lat: number; lon: number; radius: number } | null => {
     try {
       const parsed = JSON.parse(shapeData)

@@ -1,17 +1,15 @@
-import { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, useMap, Circle } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, Plus } from 'lucide-react'
-import { Button } from '../components/ui/Button'
-import { RadialMenu } from '../components/maps/RadialMenu'
-import { GeofenceLayer } from '../components/maps/GeofenceLayer'
-import { DrawerPanel } from '../components/geofence/DrawerPanel'
-import { useGeofences } from '../hooks/useGeofences'
-import { useMoveGeofence } from '../hooks/useGeofences'
+import { useState, useEffect } from "react"
+import { MapContainer, TileLayer, useMap } from "react-leaflet"
+import "leaflet/dist/leaflet.css"
+import { Link } from "react-router-dom"
+import { ArrowLeft, Plus } from "lucide-react"
+import { Button } from "../components/ui/Button"
+import { RadialMenu } from "../components/maps/RadialMenu"
+import { GeofenceLayer } from "../components/maps/GeofenceLayer"
+import { DrawerPanel } from "../components/geofence/DrawerPanel"
+import { useGeofences } from "../hooks/useGeofences"
 
-const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+const darkTileUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
 
 interface Geofence {
   id: number
@@ -22,65 +20,48 @@ interface Geofence {
   detect_on?: string[]
 }
 
-function MapController({ center }: { center: [number, number] }) {
+interface MapControllerProps {
+  geofences: Geofence[]
+}
+
+function MapController({ geofences }: MapControllerProps) {
   const map = useMap()
+
   useEffect(() => {
-    map.setView(center, 10)
-  }, [map, center])
+    const parseShapeData = (shapeData: string): { lat: number; lon: number; radius: number } | null => {
+      try {
+        const parsed = JSON.parse(shapeData)
+        return { lat: parsed.lat, lon: parsed.lon, radius: parsed.radius }
+      } catch {
+        return null
+      }
+    }
+
+    const shapes = geofences
+      .map(g => parseShapeData(g.shape_data))
+      .filter((s): s is { lat: number; lon: number; radius: number } => s !== null)
+
+    if (shapes.length > 0) {
+      const bounds = shapes.map(s => [s.lat, s.lon] as [number, number])
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 })
+    } else {
+      map.setView([0, 0], 2)
+    }
+  }, [map, geofences])
+
   return null
 }
 
 export function GeofenceEditor() {
-  const { data: geofences, isLoading } = useGeofences()
-  const moveMutation = useMoveGeofence()
+  const { data: geofences } = useGeofences()
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [mapCenter, setMapCenter] = useState<[number, number]>([39.8283, -98.5795])
-  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
-  const [menuVisible, setMenuVisible] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerMode, setDrawerMode] = useState<'add' | 'edit' | null>(null)
-  const [tempCenter, setTempCenter] = useState<{ lat: number; lon: number } | null>(null)
+  const [drawerMode, setDrawerMode] = useState<"add" | "edit" | null>(null)
 
   const selectedGeofence = geofences?.find((g: Geofence) => g.id === selectedId) || null
 
-  const parseShapeData = (shapeData: string): { lat: number; lon: number } | null => {
-    try {
-      const parsed = JSON.parse(shapeData)
-      return { lat: parsed.lat, lon: parsed.lon }
-    } catch {
-      return null
-    }
-  }
-
-  const handleMapClick = (e: L.LeafletMouseEvent) => {
-    if (drawerOpen) return
-    const { lat, lng } = e.latlng
-    setMenuPos({ x: e.originalEvent.clientX, y: e.originalEvent.clientY })
-    setMenuVisible(true)
-    setTempCenter({ lat, lon: lng })
-    setMapCenter([lat, lng])
-  }
-
-  const handleAction = (action: 'add' | 'edit' | 'move' | 'delete') => {
-    setMenuVisible(false)
-    setDrawerMode(action)
-
-    if (action === 'add') {
-      setDrawerOpen(true)
-    } else if (action === 'edit') {
-      if (selectedId) {
-        setDrawerOpen(true)
-      }
-    } else if (action === 'move') {
-      if (selectedId && tempCenter) {
-        moveMutation.mutate({ id: selectedId, lat: tempCenter.lat, lon: tempCenter.lon })
-        setSelectedId(null)
-      }
-    } else if (action === 'delete') {
-      if (selectedId && confirm('Delete this geofence?')) {
-        setSelectedId(null)
-      }
-    }
+  const handleAction = (_action: "add" | "edit" | "move" | "delete") => {
+    // Placeholder for radial menu actions
   }
 
   const handleCloseDrawer = () => {
@@ -89,15 +70,24 @@ export function GeofenceEditor() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900">
-      <div className="flex items-center justify-between px-6 py-4 bg-slate-800 border-b border-slate-700">
+    <div className="h-screen flex flex-col bg-background">
+      <div className="flex items-center justify-between px-6 py-4 border-b bg-card">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-slate-400 hover:text-white">
+          <Link
+            to="/"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-xl font-bold text-white">Geofence Editor</h1>
+          <h1 className="text-xl font-bold tracking-tight">Geofence Editor</h1>
         </div>
-        <Button variant="outline" onClick={() => { setDrawerMode('add'); setDrawerOpen(true); }}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setDrawerMode("add")
+            setDrawerOpen(true)
+          }}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Add Geofence
         </Button>
@@ -105,27 +95,26 @@ export function GeofenceEditor() {
 
       <div className="flex-1 relative">
         <MapContainer
-          center={mapCenter}
-          zoom={10}
+          center={[0, 0]}
+          zoom={2}
           className="w-full h-full"
-          onClick={handleMapClick}
         >
           <TileLayer url={darkTileUrl} />
-          <MapController center={mapCenter} />
+          <MapController geofences={geofences || []} />
           {geofences && (
             <GeofenceLayer
               geofences={geofences as Geofence[]}
-              selectedId={selectedId}
+              selectedId={selectedId ?? undefined}
               onSelect={setSelectedId}
             />
           )}
         </MapContainer>
 
         <RadialMenu
-          x={menuPos.x}
-          y={menuPos.y}
-          visible={menuVisible}
-          onClose={() => setMenuVisible(false)}
+          x={0}
+          y={0}
+          visible={false}
+          onClose={() => {}}
           onAction={handleAction}
           hasSelection={selectedId !== null}
         />
@@ -136,12 +125,11 @@ export function GeofenceEditor() {
             onClose={handleCloseDrawer}
             mode={drawerMode}
             selectedGeofence={selectedGeofence}
-            mapCenter={tempCenter || undefined}
           />
         )}
 
-        <div className="absolute bottom-6 left-6 bg-slate-800/90 text-white text-sm px-4 py-2 rounded-lg">
-          Left-click on map to add geofence • Click existing geofence to select
+        <div className="absolute bottom-6 left-6 bg-card/90 text-foreground text-sm px-4 py-2 rounded-lg border shadow-lg">
+          Click geofence to select • Use Add button to create new
         </div>
       </div>
     </div>

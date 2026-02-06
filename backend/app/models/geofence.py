@@ -1,5 +1,6 @@
+import json
 from typing import Optional, List
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field
 from enum import Enum
 import time
 
@@ -25,18 +26,27 @@ class Geofence(SQLModel, table=True):
     uid: str = Field(index=True, unique=True)
     description: Optional[str] = None
     mode: GeofenceMode = Field(default=GeofenceMode.REPORT_ONLY)
-    detect_on: list[DetectionType] = Field(default=[])
+    detect_on: str = Field(default="[]")
 
-    # Shape stored as JSON (GeoJSON or Tile38 format)
     shape_type: str = Field(description="circle, polygon, etc.")
     shape_data: str = Field(
         description="JSON string of the shape coordinates/parameters"
     )
 
-    # Metadata
     auto_registered: bool = False
     created_at: float = Field(default_factory=time.time)
     updated_at: float = Field(default_factory=time.time)
+
+    @property
+    def detect_on_list(self) -> List[DetectionType]:
+        try:
+            return [DetectionType(x) for x in json.loads(self.detect_on)]
+        except (json.JSONDecodeError, ValueError):
+            return []
+
+    @detect_on_list.setter
+    def detect_on_list(self, value: List[DetectionType]):
+        self.detect_on = json.dumps([x.value for x in value])
 
 
 class GeofenceCreate(SQLModel):
@@ -44,6 +54,7 @@ class GeofenceCreate(SQLModel):
     uid: str
     description: Optional[str] = None
     mode: GeofenceMode = GeofenceMode.REPORT_ONLY
+    detect_on: str = "[]"
     shape_type: str
     shape_data: str
 
@@ -52,5 +63,6 @@ class GeofenceUpdate(SQLModel):
     name: Optional[str] = None
     description: Optional[str] = None
     mode: Optional[GeofenceMode] = None
+    detect_on: Optional[str] = None
     shape_type: Optional[str] = None
     shape_data: Optional[str] = None

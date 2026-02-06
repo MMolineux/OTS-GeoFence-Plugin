@@ -33,9 +33,9 @@ class Tile38Service:
 
         await (
             self.client.sethook(hook_name, endpoint)
+            .meta({"geofence_id": str(geofence_id), "geofence_name": geofence_name})
             .nearby(collection)
             .point(lat, lon, radius_meters)
-            .meta({"geofence_id": str(geofence_id), "geofence_name": geofence_name})
             .detect(detect_list)
             .activate()
         )

@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
-import { Input } from '../ui/Input'
-import { Label } from '../ui/Label'
+import { useState, useEffect } from "react"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../ui/Card"
+import { Input } from "../ui/Input"
+import { Label } from "../ui/Label"
 
 interface DrawerPrefs {
   width: number
@@ -11,7 +16,7 @@ export function DrawerPrefs() {
   const [prefs, setPrefs] = useState<DrawerPrefs>({ width: 400 })
 
   useEffect(() => {
-    const stored = localStorage.getItem('drawerPrefs')
+    const stored = localStorage.getItem("drawerPrefs")
     if (stored) {
       setPrefs(JSON.parse(stored))
     }
@@ -20,7 +25,7 @@ export function DrawerPrefs() {
   const handleWidthChange = (width: number) => {
     const newPrefs = { ...prefs, width }
     setPrefs(newPrefs)
-    localStorage.setItem('drawerPrefs', JSON.stringify(newPrefs))
+    localStorage.setItem("drawerPrefs", JSON.stringify(newPrefs))
   }
 
   return (
@@ -37,9 +42,11 @@ export function DrawerPrefs() {
             min="300"
             max="600"
             value={prefs.width}
-            onChange={(e) => handleWidthChange(parseInt(e.target.value) || 400)}
+            onChange={(e) =>
+              handleWidthChange(parseInt(e.target.value) || 400)
+            }
           />
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Default: 400px. Range: 300-600px.
           </p>
         </div>

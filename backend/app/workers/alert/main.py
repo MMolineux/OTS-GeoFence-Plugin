@@ -3,9 +3,19 @@ import aio_pika
 import json
 import logging
 from app.core.config import settings
+from app.core.socket import emit_event_new
+from sqlmodel import select
+from app.db.engine import get_session
+from app.models.event import GeofenceEvent
+from app.models.geofence import Geofence
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def get_geofence_name(session, geofence_id):
+    geofence = session.get(Geofence, geofence_id)
+    return geofence.name if geofence else None
 
 
 class AlertWorker:
@@ -58,10 +68,30 @@ class AlertWorker:
 
                 geofence_id = hook_meta.get("geofence_id")
                 unit_id = object_data.get("id")
+                geofence_name = hook_meta.get("geofence_name", "")
 
                 logger.info(
                     f"Alert: {event_type} by {unit_id} in Geofence {geofence_id}"
                 )
+
+                session = next(get_session())
+                with session:
+                    geofence_event = GeofenceEvent(
+                        geofence_id=int(geofence_id) if geofence_id else 0,
+                        unit_uid=unit_id or "unknown",
+                        event_type=event_type or "unknown",
+                    )
+                    session.add(geofence_event)
+                    session.commit()
+
+                    await emit_event_new(
+                        {
+                            "event_type": event_type,
+                            "callsign": unit_id,
+                            "geofence_id": int(geofence_id) if geofence_id else 0,
+                            "geofence_name": geofence_name,
+                        }
+                    )
 
             except Exception as e:
                 logger.error(f"Error processing alert: {e}")

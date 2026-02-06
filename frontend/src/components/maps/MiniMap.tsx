@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { MapContainer, TileLayer, Circle, useMap } from 'react-leaflet'
-import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useGeofences } from '../../hooks/useGeofences'
 import { useNavigate } from 'react-router'
@@ -15,11 +14,35 @@ interface Geofence {
   mode: string
 }
 
-function MapController() {
+interface MapControllerProps {
+  geofences: Geofence[]
+}
+
+function MapController({ geofences }: MapControllerProps) {
   const map = useMap()
+
   useEffect(() => {
-    map.setView([39.8283, -98.5795], 4)
-  }, [map])
+    const parseShapeData = (shapeData: string): { lat: number; lon: number; radius: number } | null => {
+      try {
+        const parsed = JSON.parse(shapeData)
+        return { lat: parsed.lat, lon: parsed.lon, radius: parsed.radius }
+      } catch {
+        return null
+      }
+    }
+
+    const shapes = geofences
+      .map(g => parseShapeData(g.shape_data))
+      .filter((s): s is { lat: number; lon: number; radius: number } => s !== null)
+
+    if (shapes.length > 0) {
+      const bounds = shapes.map(s => [s.lat, s.lon] as [number, number])
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10 })
+    } else {
+      map.setView([0, 0], 2)
+    }
+  }, [map, geofences])
+
   return null
 }
 
@@ -60,7 +83,7 @@ export function MiniMap() {
           attributionControl={false}
         >
           <TileLayer url={darkTileUrl} />
-          <MapController />
+          <MapController geofences={geofences || []} />
           {geofences?.map((geofence: Geofence) => {
             const shape = parseShapeData(geofence.shape_data)
             if (!shape) return null

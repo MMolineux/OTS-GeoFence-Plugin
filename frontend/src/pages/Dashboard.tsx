@@ -1,21 +1,21 @@
-import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Settings, Map as MapIcon } from 'lucide-react'
-import { StatsGrid } from '../components/dashboard/StatsGrid'
-import { MiniMap } from '../components/maps/MiniMap'
-import { EventTable } from '../components/dashboard/EventTable'
-import { useSocket } from '../hooks/useSocket'
-import { Card, CardContent } from '../components/ui/Card'
-import { Button } from '../components/ui/Button'
-import { Toaster, toast } from 'sonner'
+import { useEffect } from "react"
+import { Link } from "react-router-dom"
+import { Settings, Map as MapIcon } from "lucide-react"
+import { StatsGrid } from "../components/dashboard/StatsGrid"
+import { MiniMap } from "../components/maps/MiniMap"
+import { EventTable } from "../components/dashboard/EventTable"
+import { useSocket } from "../hooks/useSocket"
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card"
+import { Button } from "../components/ui/Button"
+import { Toaster, toast } from "sonner"
 
 export function Dashboard() {
   useSocket()
 
   useEffect(() => {
     const notifyNewEvent = () => {
-      toast.success('New event received', {
-        description: 'Check the event history table',
+      toast.success("New event received", {
+        description: "Check the event history table",
         duration: 3000,
       })
     }
@@ -23,13 +23,15 @@ export function Dashboard() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Toaster position="top-right" />
-      <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
+      <div className="container mx-auto px-4 md:px-6 py-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">GeoFence Monitoring Service</p>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              GeoFence Monitoring Service
+            </p>
           </div>
           <div className="flex gap-3">
             <Link to="/geofences">
@@ -52,9 +54,11 @@ export function Dashboard() {
             <StatsGrid />
           </div>
           <div className="lg:col-span-2">
-            <Card className="h-full">
-              <CardContent className="p-4 h-full">
-                <h2 className="text-sm font-medium text-slate-500 mb-3">Geofence Overview</h2>
+            <Card className="h-[400px]">
+              <CardHeader>
+                <CardTitle className="text-base">Geofence Overview</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0 h-[calc(100%-60px)]">
                 <MiniMap />
               </CardContent>
             </Card>
@@ -63,11 +67,17 @@ export function Dashboard() {
 
         <EventTable />
 
-        <div className="mt-8 flex justify-center gap-4">
-          <Link to="/geofences" className="text-sm text-blue-600 hover:underline">
+        <div className="mt-8 flex justify-center gap-6">
+          <Link
+            to="/geofences"
+            className="text-sm text-primary hover:underline transition-colors"
+          >
             Manage Geofences →
           </Link>
-          <Link to="/settings" className="text-sm text-blue-600 hover:underline">
+          <Link
+            to="/settings"
+            className="text-sm text-primary hover:underline transition-colors"
+          >
             View Settings →
           </Link>
         </div>

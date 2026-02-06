@@ -1,0 +1,43 @@
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  file:
+    directory: "/etc/traefik"
+    watch: true
+
+http:
+  routers:
+    frontend:
+      entryPoints:
+        - web
+      rule: "Host(`localhost`)"
+      service: frontend
+      priority: 10
+
+    api:
+      entryPoints:
+        - web
+      rule: "Host(`localhost`) && PathPrefix(`/api`)"
+      service: api
+      priority: 20
+
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:80"
+
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://api:8000"

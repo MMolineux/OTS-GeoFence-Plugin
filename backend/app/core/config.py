@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # RabbitMQ
     COT_RABBITMQ_URL: str = "amqp://guest:guest@rabbitmq:5672/"
-    GEOFENCE_RABBITMQ_URL: str = "amqp://guest:guest@rabbitmq:5672/"
+    GEOFENCE_RABBITMQ_URL: str = "amqp://guest:guest@rabbitmq:5672/%2F"
     GEOFENCE_EXCHANGE: str = "geofence_alerts"
 
     # Auth
