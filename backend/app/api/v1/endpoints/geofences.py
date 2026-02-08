@@ -117,22 +117,29 @@ async def update_geofence(
     return db_geofence
 
 
+from pydantic import BaseModel
+
+
+class MoveGeofenceRequest(BaseModel):
+    lat: float
+    lon: float
+
+
 @router.patch("/{geofence_id}/move")
 async def move_geofence(
     *,
     session: Session = Depends(get_session),
     tile38: Tile38Service = Depends(get_tile38),
     geofence_id: int,
-    lat: float,
-    lon: float,
+    request: MoveGeofenceRequest,
 ):
     db_geofence = session.get(Geofence, geofence_id)
     if not db_geofence:
         raise HTTPException(status_code=404, detail="Geofence not found")
 
     shape_data = json.loads(db_geofence.shape_data)
-    shape_data["lat"] = lat
-    shape_data["lon"] = lon
+    shape_data["lat"] = request.lat
+    shape_data["lon"] = request.lon
     new_shape_data = json.dumps(shape_data)
 
     await tile38.delete_hook(db_geofence.id)
@@ -147,8 +154,8 @@ async def move_geofence(
     await tile38.create_hook(
         geofence_id=db_geofence.id,
         geofence_name=db_geofence.name,
-        lat=lat,
-        lon=lon,
+        lat=request.lat,
+        lon=request.lon,
         radius_meters=shape_data["radius"],
         detect_on=detect_on_list if detect_on_list else None,
     )

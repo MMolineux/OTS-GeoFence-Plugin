@@ -6,6 +6,7 @@ import { Select } from '../ui/Select'
 import { Checkbox } from '../ui/Checkbox'
 import { Label } from '../ui/Label'
 import { generateUid } from '../../lib/utils'
+import { Crosshair } from 'lucide-react'
 
 interface GeofenceFormData {
   name: string
@@ -17,6 +18,7 @@ interface GeofenceFormData {
   lon: number
   radius: number
   detect_on: string[]
+  _needsMapClick?: boolean
 }
 
 interface GeofenceFormProps {
@@ -25,9 +27,11 @@ interface GeofenceFormProps {
   onReset: () => void
   isLoading?: boolean
   isEdit?: boolean
+  onSetPosition?: () => void
+  position?: { lat: number; lon: number } | null
 }
 
-export function GeofenceForm({ initialData, onSubmit, onReset, isLoading, isEdit }: GeofenceFormProps) {
+export function GeofenceForm({ initialData, onSubmit, onReset, isLoading, isEdit, onSetPosition, position }: GeofenceFormProps) {
   const [formData, setFormData] = useState<GeofenceFormData>({
     name: initialData?.name || '',
     uid: initialData?.uid || generateUid(),
@@ -45,6 +49,14 @@ export function GeofenceForm({ initialData, onSubmit, onReset, isLoading, isEdit
       setFormData(prev => ({ ...prev, ...initialData }))
     }
   }, [initialData])
+
+  useEffect(() => {
+    if (position) {
+      setFormData(prev => ({ ...prev, lat: position.lat, lon: position.lon }))
+    }
+  }, [position])
+
+  const hasPosition = position !== null || (formData.lat !== 0 || formData.lon !== 0)
 
   const handleChange = (field: keyof GeofenceFormData, value: string | number | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -130,23 +142,41 @@ export function GeofenceForm({ initialData, onSubmit, onReset, isLoading, isEdit
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div className="space-y-2">
             <Label htmlFor="lat">Center Latitude</Label>
-            <Input
-              id="lat"
-              type="number"
-              step="any"
-              value={formData.lat}
-              onChange={(e) => handleChange('lat', parseFloat(e.target.value) || 0)}
-            />
+            {!isEdit && onSetPosition && !hasPosition ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onSetPosition}
+                className="w-full h-10"
+              >
+                <Crosshair className="w-4 h-4 mr-2" />
+                Set Position
+              </Button>
+            ) : (
+              <Input
+                id="lat"
+                type="number"
+                step="any"
+                value={formData.lat}
+                onChange={(e) => handleChange('lat', parseFloat(e.target.value) || 0)}
+              />
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="lon">Center Longitude</Label>
-            <Input
-              id="lon"
-              type="number"
-              step="any"
-              value={formData.lon}
-              onChange={(e) => handleChange('lon', parseFloat(e.target.value) || 0)}
-            />
+            {!isEdit && onSetPosition && !hasPosition ? (
+              <div className="h-10 flex items-center text-sm text-muted-foreground">
+                Click button to set
+              </div>
+            ) : (
+              <Input
+                id="lon"
+                type="number"
+                step="any"
+                value={formData.lon}
+                onChange={(e) => handleChange('lon', parseFloat(e.target.value) || 0)}
+              />
+            )}
           </div>
         </div>
 
